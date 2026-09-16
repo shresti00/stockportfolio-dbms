@@ -1,0 +1,37 @@
+DROP TABLE TRANSACTIONS CASCADE CONSTRAINTS;
+DROP TABLE DAILY_PRICES CASCADE CONSTRAINTS;
+DROP TABLE ASSETS CASCADE CONSTRAINTS;
+DROP TABLE USERS CASCADE CONSTRAINTS;
+
+CREATE TABLE USERS (
+    user_id INT PRIMARY KEY,
+    username VARCHAR2(50) UNIQUE NOT NULL,
+    created_at DATE DEFAULT SYSDATE
+);
+
+CREATE TABLE ASSETS (
+    ticker VARCHAR2(10) PRIMARY KEY,
+    company_name VARCHAR2(100) NOT NULL,
+    sector VARCHAR2(50)
+);
+
+CREATE TABLE DAILY_PRICES (
+    ticker VARCHAR2(10),
+    price_date DATE NOT NULL,
+    close_price NUMBER(10, 2) NOT NULL,
+    CONSTRAINT pk_daily_prices PRIMARY KEY (ticker, price_date),
+    CONSTRAINT fk_prices_assets FOREIGN KEY (ticker) REFERENCES ASSETS(ticker)
+);
+
+CREATE TABLE TRANSACTIONS (
+    transaction_id INT PRIMARY KEY,
+    user_id INT,
+    ticker VARCHAR2(10),
+    txn_type VARCHAR2(4),
+    quantity NUMBER(10, 2) NOT NULL,
+    price_per_share NUMBER(10, 2) NOT NULL,
+    txn_date DATE DEFAULT SYSDATE,
+    CONSTRAINT fk_txn_user FOREIGN KEY (user_id) REFERENCES USERS(user_id),
+    CONSTRAINT fk_txn_asset FOREIGN KEY (ticker) REFERENCES ASSETS(ticker),
+    CONSTRAINT chk_txn_type CHECK (txn_type IN ('BUY', 'SELL'))
+);
