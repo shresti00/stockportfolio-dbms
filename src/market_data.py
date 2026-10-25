@@ -1,7 +1,7 @@
 import os
 import datetime
 import yfinance as yf
-import oracledb
+import mariadb
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,10 +9,10 @@ load_dotenv()
 def update_stock(symbol):
     stock = yf.Ticker(symbol)
     info = stock.info
-    
+
     name = info.get('shortName', symbol)
     sector = info.get('sector', 'Unknown')
-    
+
     hist = stock.history(period="1d")
     if hist.empty:
         print(f"Could not get data for {symbol}")
@@ -21,46 +21,46 @@ def update_stock(symbol):
     current_price = float(hist['Close'].iloc[-1])
     today = datetime.date.today()
 
-    conn = oracledb.connect(
+    conn = mariadb.connect(
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
-        dsn=os.getenv("DB_DSN")
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT", 3306)),
+        database=os.getenv("DB_NAME")
     )
     cur = conn.cursor()
 
-    # 1. Update or Insert ASSETS table
-    cur.execute("SELECT ticker FROM ASSETS WHERE ticker = :1", [symbol])
+    cur.execute("SELECT ticker FROM assets WHERE ticker = %s", (symbol,))
     if cur.fetchone():
         cur.execute(
-            "UPDATE ASSETS SET company_name = :1, sector = :2 WHERE ticker = :3",
-            [name, sector, symbol]
+            "UPDATE assets SET company_name = %s, sector = %s WHERE ticker = %s",
+            (name, sector, symbol)
         )
     else:
         cur.execute(
-            "INSERT INTO ASSETS (ticker, company_name, sector) VALUES (:1, :2, :3)",
-            [symbol, name, sector]
+            "INSERT INTO assets (ticker, company_name, sector) VALUES (%s, %s, %s)",
+            (symbol, name, sector)
         )
 
-    # 2. Update or Insert DAILY_PRICES table
     cur.execute(
-        "SELECT ticker FROM DAILY_PRICES WHERE ticker = :1 AND price_date = :2",
-        [symbol, today]
+        "SELECT ticker FROM daily_prices WHERE ticker = %s AND price_date = %s",
+        (symbol, today)
     )
     if cur.fetchone():
         cur.execute(
-            "UPDATE DAILY_PRICES SET close_price = :1 WHERE ticker = :2 AND price_date = :3",
-            [current_price, symbol, today]
+            "UPDATE daily_prices SET close_price = %s WHERE ticker = %s AND price_date = %s",
+            (current_price, symbol, today)
         )
     else:
         cur.execute(
-            "INSERT INTO DAILY_PRICES (ticker, price_date, close_price) VALUES (:1, :2, :3)",
-            [symbol, today, current_price]
+            "INSERT INTO daily_prices (ticker, price_date, close_price) VALUES (%s, %s, %s)",
+            (symbol, today, current_price)
         )
 
     conn.commit()
     cur.close()
     conn.close()
-    
+
     print(f"Successfully updated {symbol}: ${current_price:.2f}")
 
 stocks = ["AAPL", "MSFT", "GOOGL", "NVDA"]
