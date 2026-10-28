@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Portfolio Tracker & Wealth Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+    .nav-active { background-color: #2563eb; color: white !important; font-weight: 600; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); }
+    .badge-profit { background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .badge-loss { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Top Header & User Selector -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <i class="fa-solid fa-chart-pie text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight text-slate-900 leading-none">Stockport Wealth</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Portfolio & Mutual Fund Investment Manager</p>
+          </div>
+        </div>
+
+        <!-- User Selector & DB Status -->
+        <div class="flex items-center space-x-4">
+          <!-- Active Demo User Switcher -->
+          <div class="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+            <span class="text-xs font-semibold text-slate-500 pl-2 pr-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-user-circle text-slate-600"></i> Investor:
+            </span>
+            <select id="active-user-select" onchange="handleUserChange()" class="bg-white text-slate-900 font-semibold text-xs rounded-lg px-2.5 py-1 border-0 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <!-- Connection Pill -->
+          <div id="db-status-pill" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="db-status-text">DBMS Active</span>
+          </div>
+
+          <button onclick="refreshData()" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition" title="Refresh Live Data">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Investor Navigation -->
+      <nav class="flex space-x-1 border-t border-slate-100 py-2 overflow-x-auto text-xs sm:text-sm font-medium">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-active px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-gauge-high"></i> Portfolio Overview
+        </button>
+        <button onclick="switchTab('explorer')" id="nav-explorer" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass-chart"></i> Explore Stocks
+        </button>
+        <button onclick="switchTab('stock-portfolio')" id="nav-stock-portfolio" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-briefcase"></i> Direct Stock Holdings
+        </button>
+        <button onclick="switchTab('transactions')" id="nav-transactions" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-receipt"></i> Transaction Ledger
+        </button>
+        <button onclick="switchTab('watchlist')" id="nav-watchlist" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-bell"></i> Watchlist & Alerts
+        </button>
+        <button onclick="switchTab('mutual-funds')" id="nav-mutual-funds" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-shapes"></i> Explore Mutual Funds
+        </button>
+        <button onclick="switchTab('my-funds')" id="nav-my-funds" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-vault"></i> My Scheme Investments
+        </button>
+        <button onclick="switchTab('exposure')" id="nav-exposure" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-diagram-project"></i> Portfolio Exposure & Overlap
+        </button>
+        <button onclick="switchTab('corporate')" id="nav-corporate" class="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-building"></i> Corporate Ownership
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Viewport -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ================= 1. PORTFOLIO OVERVIEW (DASHBOARD) ================= -->
+    <section id="tab-dashboard" class="space-y-6">
+      <!-- Financial Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <span>Direct Stock Value</span>
+            <i class="fa-solid fa-chart-line text-blue-600 text-base"></i>
+          </div>
+          <div id="stat-direct-value" class="mt-2 text-2xl font-extrabold text-slate-900">₹0.00</div>
+          <div class="mt-1 text-xs text-slate-400">Current market value of owned shares</div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <span>Direct Invested Capital</span>
+            <i class="fa-solid fa-wallet text-slate-600 text-base"></i>
+          </div>
+          <div id="stat-invested-capital" class="mt-2 text-2xl font-extrabold text-slate-900">₹0.00</div>
+          <div class="mt-1 text-xs text-slate-400">Net cost of active stock positions</div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <span>Profit & Loss Breakdown</span>
+            <i class="fa-solid fa-scale-balanced text-emerald-600 text-base"></i>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="stat-unrealized-pnl" class="text-xl font-bold">₹0.00</span>
+            <span class="text-xs text-slate-400">unrealized</span>
+          </div>
+          <div class="mt-0.5 text-xs text-slate-500">Realized P&L: <span id="stat-realized-pnl" class="font-semibold text-slate-800">₹0.00</span></div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <span>Mutual Fund Capital</span>
+            <i class="fa-solid fa-landmark text-indigo-600 text-base"></i>
+          </div>
+          <div id="stat-mf-value" class="mt-2 text-2xl font-extrabold text-slate-900">₹0.00</div>
+          <div class="mt-1 text-xs text-slate-400">Total active mutual fund scheme investments</div>
+        </div>
+      </div>
+
+      <!-- Target Price Alerts Banner -->
+      <div id="dashboard-alerts-banner" class="hidden glass-card rounded-2xl p-4 border-l-4 border-amber-500 bg-amber-50/50">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-sm font-bold text-slate-900">Watchlist Price Target Reached</h4>
+            <p id="dashboard-alerts-text" class="text-xs text-slate-600">One or more tracked stocks have hit your target price.</p>
+          </div>
+          <button onclick="switchTab('watchlist')" class="text-xs bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-amber-700 transition">
+            View Alerts
+          </button>
+        </div>
+      </div>
+
+      <!-- Allocation Visualizations -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-blue-500"></i> Market Capitalization Breakdown
+            </h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Large / Mid / Small Cap</span>
+          </div>
+          <div class="h-64 relative flex items-center justify-center">
+            <canvas id="capChart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-indigo-500"></i> Sector Allocation
+            </h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Net Invested by Sector</span>
+          </div>
+          <div class="h-64 relative flex items-center justify-center">
+            <canvas id="sectorChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Direct Holdings Table -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Active Direct Stock Positions</h3>
+            <p class="text-xs text-slate-500">Calculated from net verified BUY and SELL transactions</p>
+          </div>
+          <button onclick="switchTab('stock-portfolio')" class="text-xs text-blue-600 font-semibold hover:underline">
+            Manage Stock Portfolio &rarr;
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Ticker</th>
+                <th class="py-3 px-4">Shares Owned</th>
+                <th class="py-3 px-4">Avg Buy Price</th>
+                <th class="py-3 px-4">Latest Market Price</th>
+                <th class="py-3 px-4">Current Value</th>
+                <th class="py-3 px-4">Unrealized P&L</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-holdings-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="7" class="py-4 text-center text-slate-400">Loading holdings...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. EXPLORE STOCKS ================= -->
+    <section id="tab-explorer" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Listed Companies & Market Trends</h3>
+            <p class="text-xs text-slate-500">Explore market caps, price performance, daily changes, and volatility</p>
+          </div>
+          <div class="w-full sm:w-64">
+            <input type="text" id="stock-search" oninput="filterStocksTable()" placeholder="Search ticker or company..." class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Company</th>
+                <th class="py-3 px-4">Sector</th>
+                <th class="py-3 px-4">Cap</th>
+                <th class="py-3 px-4">Latest Day Change</th>
+                <th class="py-3 px-4">1-Year Return</th>
+                <th class="py-3 px-4">Volatility</th>
+                <th class="py-3 px-4">52W Range</th>
+                <th class="py-3 px-4 text-right">Quick Action</th>
+              </tr>
+            </thead>
+            <tbody id="explorer-stocks-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="8" class="py-4 text-center text-slate-400">Loading market assets...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Historical Moving Average Trendline Explorer -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Moving Average Technical Trendlines</h3>
+            <p class="text-xs text-slate-500">7-Day and 30-Day moving averages computed across daily closing prices</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">Select Stock:</span>
+            <select id="select-ma-stock" onchange="loadStockTrendline()" class="bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+        <div class="h-80 relative">
+          <canvas id="maChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. DIRECT STOCK HOLDINGS ================= -->
+    <section id="tab-stock-portfolio" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Direct Stock Portfolio</h3>
+            <p class="text-xs text-slate-500">Net equity positions, average cost basis, and realized/unrealized profit ledger</p>
+          </div>
+          <button onclick="openTradeModal('BUY')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Record Trade
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Asset</th>
+                <th class="py-3 px-4">Net Shares</th>
+                <th class="py-3 px-4">Avg Buy Price</th>
+                <th class="py-3 px-4">Current Price</th>
+                <th class="py-3 px-4">Current Value</th>
+                <th class="py-3 px-4">Realized Gain</th>
+                <th class="py-3 px-4">Unrealized Gain</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="portfolio-detailed-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="8" class="py-4 text-center text-slate-400">Loading portfolio holdings...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. TRANSACTION LEDGER ================= -->
+    <section id="tab-transactions" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Transaction Ledger</h3>
+            <p class="text-xs text-slate-500">Validated history of stock BUY and SELL orders for the selected investor</p>
+          </div>
+          <button onclick="openTradeModal('BUY')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> New Transaction
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Order ID</th>
+                <th class="py-3 px-4">Asset</th>
+                <th class="py-3 px-4">Action</th>
+                <th class="py-3 px-4">Quantity</th>
+                <th class="py-3 px-4">Execution Price</th>
+                <th class="py-3 px-4">Total Amount</th>
+                <th class="py-3 px-4">Date</th>
+              </tr>
+            </thead>
+            <tbody id="txn-ledger-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="7" class="py-4 text-center text-slate-400">Loading transactions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 5. WATCHLIST & PRICE ALERTS ================= -->
+    <section id="tab-watchlist" class="hidden space-y-6">
+      <!-- Target Price Hit Alerts -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-amber-500 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i class="fa-solid fa-bullseye text-amber-500"></i> Active Target Price Alerts
+          </h3>
+          <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-1 rounded-full">Target Met</span>
+        </div>
+        <div id="target-alerts-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Add to Watchlist Box -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm">
+        <h3 class="font-bold text-slate-900 text-base mb-1">Add Stock to Watchlist</h3>
+        <p class="text-xs text-slate-500 mb-4">Set automated target price triggers on individual stocks</p>
+        <form id="watchlist-form" onsubmit="handleWatchlistSubmit(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Stock</label>
+            <select id="wl-ticker-select" required class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Target Price (₹)</label>
+            <input type="number" step="0.01" min="0.01" id="wl-target-input" required placeholder="e.g. 1550.00" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm shadow-sm transition">
+              Add to Watchlist
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Active Watchlist & Unowned Tracking -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-900 text-base">Watchlist Inventory</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+                <tr>
+                  <th class="py-3 px-3">Ticker</th>
+                  <th class="py-3 px-3">Target Price</th>
+                  <th class="py-3 px-3">Current Price</th>
+                  <th class="py-3 px-3">Status</th>
+                  <th class="py-3 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="watchlist-table-tbody" class="divide-y divide-slate-100">
+                <tr><td colspan="5" class="py-4 text-center text-slate-400">Loading watchlist...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-900 text-base">Unowned Watchlist Stocks</h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">Prospective Buys</span>
+          </div>
+          <p class="text-xs text-slate-500">Tracked stocks not currently held in your direct portfolio</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+                <tr>
+                  <th class="py-3 px-3">Ticker</th>
+                  <th class="py-3 px-3">Target Price</th>
+                  <th class="py-3 px-3 text-right">Quick Buy</th>
+                </tr>
+              </thead>
+              <tbody id="unowned-tbody" class="divide-y divide-slate-100">
+                <tr><td colspan="3" class="py-4 text-center text-slate-400">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 6. EXPLORE MUTUAL FUNDS ================= -->
+    <section id="tab-mutual-funds" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Mutual Fund Schemes & Fund Houses</h3>
+            <p class="text-xs text-slate-500">Browse asset management companies, NAV performance, risk profiles, and expense ratios</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Scheme Name</th>
+                <th class="py-3 px-4">Fund House</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Risk Level</th>
+                <th class="py-3 px-4">Latest NAV</th>
+                <th class="py-3 px-4">NAV Growth</th>
+                <th class="py-3 px-4">Min. Inv.</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="mf-schemes-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="8" class="py-4 text-center text-slate-400">Loading schemes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Scheme Underlying Holdings View -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Scheme Underlying Stock Holdings</h3>
+            <p class="text-xs text-slate-500">Portfolio allocations and weights held by schemes in underlying companies</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Scheme</th>
+                <th class="py-3 px-4">Company Asset</th>
+                <th class="py-3 px-4">Sector</th>
+                <th class="py-3 px-4">Portfolio Weight</th>
+              </tr>
+            </thead>
+            <tbody id="scheme-holdings-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="4" class="py-4 text-center text-slate-400">Loading holdings breakdown...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 7. MY MUTUAL FUND INVESTMENTS ================= -->
+    <section id="tab-my-funds" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">My Mutual Fund Holdings</h3>
+            <p class="text-xs text-slate-500">Active scheme investments, units allocated, purchase NAV, and SIP configurations</p>
+          </div>
+          <button onclick="openInvestModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Invest in Scheme
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Scheme Name</th>
+                <th class="py-3 px-4">Fund House</th>
+                <th class="py-3 px-4">Units</th>
+                <th class="py-3 px-4">Purchase NAV</th>
+                <th class="py-3 px-4">Current NAV</th>
+                <th class="py-3 px-4">Amount Invested</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="my-schemes-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="7" class="py-4 text-center text-slate-400">Loading scheme investments...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 8. PORTFOLIO EXPOSURE & OVERLAP ================= -->
+    <section id="tab-exposure" class="hidden space-y-6">
+      <!-- Direct & Indirect Overlap Banner -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-indigo-500 space-y-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-circle-nodes text-indigo-600"></i> Direct vs Mutual Fund Holdings Overlap
+        </h3>
+        <p class="text-xs text-slate-500">Companies you own directly as individual shares that are simultaneously held in your mutual fund schemes</p>
+        <div class="overflow-x-auto mt-2">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-indigo-50/50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Overlapping Company</th>
+                <th class="py-3 px-4">Direct Ownership</th>
+                <th class="py-3 px-4">Held Through Scheme</th>
+                <th class="py-3 px-4">Scheme Holding Weight</th>
+              </tr>
+            </thead>
+            <tbody id="overlap-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="4" class="py-4 text-center text-slate-400">Loading overlap analysis...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Indirect Exposure Table -->
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Indirect Company Exposure Through Mutual Funds</h3>
+            <p class="text-xs text-slate-500">Estimated capital exposure derived from your scheme investments and their portfolio weights</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Underlying Company</th>
+                <th class="py-3 px-4">Sector</th>
+                <th class="py-3 px-4">Via Scheme</th>
+                <th class="py-3 px-4">Weight %</th>
+                <th class="py-3 px-4">Estimated Exposure</th>
+              </tr>
+            </thead>
+            <tbody id="indirect-exposure-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="5" class="py-4 text-center text-slate-400">Loading indirect exposure...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 9. CORPORATE OWNERSHIP ================= -->
+    <section id="tab-corporate" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Inter-Company Equity Ownership</h3>
+            <p class="text-xs text-slate-500">Corporate equity holdings and strategic stakes held between listed companies</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">Investor Company</th>
+                <th class="py-3 px-4">Investee Company</th>
+                <th class="py-3 px-4">Equity Stake %</th>
+                <th class="py-3 px-4">Shares Held</th>
+              </tr>
+            </thead>
+            <tbody id="corporate-stakes-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="4" class="py-4 text-center text-slate-400">Loading corporate stakes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Trade Modal (Buy / Sell Stock) -->
+  <div id="trade-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="modal-trade-title" class="font-bold text-slate-900 text-base">Record Stock Trade</h3>
+        <button onclick="closeTradeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="trade-modal-form" onsubmit="handleTradeSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Stock Asset</label>
+          <select id="modal-trade-ticker" required onchange="updateModalPrice()" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Action</label>
+            <select id="modal-trade-action" required class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+              <option value="BUY">BUY</option>
+              <option value="SELL">SELL</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Shares Quantity</label>
+            <input type="number" step="0.01" min="0.01" id="modal-trade-qty" required placeholder="e.g. 10" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Price Per Share (₹)</label>
+          <input type="number" step="0.01" min="0.01" id="modal-trade-price" required placeholder="e.g. 1500.00" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeTradeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">Confirm Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mutual Fund Invest Modal -->
+  <div id="invest-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base">Invest in Mutual Fund Scheme</h3>
+        <button onclick="closeInvestModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="invest-modal-form" onsubmit="handleInvestSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Scheme</label>
+          <select id="modal-invest-scheme" required onchange="updateMinInvestmentNotice()" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Lump Sum Amount (₹)</label>
+          <input type="number" step="100" min="100" id="modal-invest-amount" required placeholder="e.g. 5000" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+          <p id="modal-min-inv-text" class="text-xs text-slate-500 mt-1">Min. investment required: ₹0.00</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Monthly SIP (Optional ₹)</label>
+          <input type="number" step="100" min="0" id="modal-invest-sip" placeholder="Optional recurring SIP" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeInvestModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">Confirm Investment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-message">Action successful</span>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
