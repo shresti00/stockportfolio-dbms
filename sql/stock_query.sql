@@ -1,13 +1,11 @@
-
 --current portfolio value per user
 select u.username,
-round(sum(h.qty*dp.close_price),2) as portfolio_value
-from (select user_id,ticker,
-sum(case when txn_type='BUY' then quantity 
-else -quantity
-end)as qty
-from transactions
-group by user_id,ticker
+       round(sum(h.qty * lp.close_price), 2) as portfolio_value
+from (
+    select user_id, ticker,
+           sum(case when txn_type = 'BUY' then quantity else -quantity end) as qty
+    from transactions
+    group by user_id, ticker
 ) h
 join users u on u.user_id = h.user_id
 join daily_prices lp on lp.ticker = h.ticker
@@ -20,20 +18,20 @@ round((last_price-first_price)/first_price*100,2) as prct_change
 from (select d.ticker,
 (select close_price from daily_prices where ticker=d.ticker order by price_date asc limit 1 ) as first_price,
 (select close_price from daily_prices where ticker=d.ticker order by price_date desc limit 1 ) as last_price
-from (select distinct ticker from daily_prices)d
-)t
+from (select distinct ticker from daily_prices) d
+) t
 order by prct_change desc;
 
 
 --sectorwise investment allocation
 select a.sector,
 round(sum(
-    case when t.txn_type='BUY' then t.quantity*t.price_per_share
-    else -t.quantity*t.price_per_share
+    case when tr.txn_type='BUY' then tr.quantity*tr.price_per_share
+    else -tr.quantity*tr.price_per_share
     end
 ),2)as net_invested
-from transactions t
-join assets a on a,ticker=t.ticker
+from transactions tr
+join assets a on a.ticker=tr.ticker
 group by a.sector
 order by net_invested desc;
 
@@ -142,12 +140,12 @@ where usi.status = 'ACTIVE'
 group by u.username;
 
 --which company holds stakes in which
-select ia.company_name as investor, ea.company_name as investee, ci.stake_pct, ci.shares_held
+select ia.company_name as investor, ea.company_name as investee, ci.stake_prct, ci.shares_held
 from company_investments ci
 join assets ia on ia.ticker = ci.investor_ticker
 join assets ea on ea.ticker = ci.investee_ticker
 where ci.as_of_date = (select max(as_of_date) from company_investments)
-order by ci.stake_pct desc;
+order by ci.stake_prct desc;
 
 -- stocks a user owns directly and also through a scheme
 select distinct u.username, a.company_name, s.scheme_nm
