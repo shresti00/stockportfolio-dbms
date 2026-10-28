@@ -11,7 +11,7 @@ create table users(
 );
 
 
-create table assets(
+create table corporate_shares(
     ticker varchar(10) primary key,
     company_name varchar(100) not null,
     sector varchar(50),
@@ -38,7 +38,6 @@ create table transactions(
     constraint fk_txn_user foreign key (user_id) references users(user_id),
     constraint fk_txn_asset foreign key (ticker) references assets(ticker),
     constraint chk_txn_type check (txn_type in ('BUY','SELL'))
-
 );
 
 create table watchlist(
