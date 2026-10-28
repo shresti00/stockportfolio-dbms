@@ -11,7 +11,7 @@ create table users(
 );
 
 
-create table corporate_shares(
+create table assets(
     ticker varchar(10) primary key,
     company_name varchar(100) not null,
     sector varchar(50),
